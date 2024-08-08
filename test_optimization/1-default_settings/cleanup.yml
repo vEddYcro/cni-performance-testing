@@ -1,0 +1,7 @@
+---
+- name: Cleaning up environment after executing default settings tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Cleaning up Default settings tests doesn't have any additional prerequisites"

@@ -1,0 +1,150 @@
+---
+- name: Clean up the environment for Default settings test (1 gigabit)
+  hosts: all
+  tasks: 
+    - name: Clean up IP configuration on eno2 interface
+      file: 
+        path: /etc/netplan/test.yaml
+        state: absent
+      tags: [setup-config]
+
+    - name: Reload interface configuration 
+      shell: "sudo netplan apply"
+      ignore_errors: true
+      tags: [apply-config]
+
+    - name: Ensure iperf3 server is stopped
+      shell: "sudo killall iperf3"
+      ignore_errors: true
+      tags: ['setup-iperf']
+
+    - name: Ensure netperf server is stopped
+      shell: "sudo killall netserver"
+      ignore_errors: true
+      tags: ['setup-netperf']
+
+    - name: Ensure iperf3 server is stopped 
+      become: false
+      k8s:
+        state: absent
+        kubeconfig: "../kubeconfig"
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: iperf3-server
+            namespace: default
+            labels:
+              app: iperf3-server
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: iperf3-server
+            template:
+              metadata:
+                labels:
+                  app: iperf3-server
+              spec:
+                nodeSelector:
+                  kubernetes.io/hostname: doktnet02
+                containers:
+                - name: iperf3-server
+                  image: matejbasic/cni-performance-testing:1.0
+                  command: ["iperf3","-s","-p","8080"]
+                  ports:
+                  - containerPort: 8080
+      delegate_to: localhost
+      ignore_errors: true
+      tags: ['setup-iperf']
+
+    - name: Ensure netperf server is stopped 
+      become: false
+      k8s:
+        state: absent
+        kubeconfig: "../kubeconfig"
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: netperf-server
+            namespace: default
+            labels:
+              app: netperf-server
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: netperf-server
+            template:
+              metadata:
+                labels:
+                  app: netperf-server
+              spec:
+                nodeSelector:
+                  kubernetes.io/hostname: doktnet02
+                containers:
+                - name: netperf-server
+                  image: matejbasic/cni-performance-testing:1.0
+                  command: ["netserver","-p","9090","-D"]
+                  ports:
+                  - containerPort: 9090
+      delegate_to: localhost
+      ignore_errors: true
+      tags: ['setup-netperf']
+
+    - name: Ensure netperf-server service is absent
+      become: false
+      k8s: 
+        state: absent
+        kubeconfig: "../kubeconfig"
+        definition: 
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: netperf-server
+            namespace: default
+            labels:
+              app: netperf-server
+          spec:
+            selector:
+              app: netperf-server
+            ports:
+            - protocol: TCP
+              port: 9090
+              targetPort: 9090
+            - protocol: UDP
+              port: 9090
+              targetPort: 9090
+            type: NodePort
+      delegate_to: localhost
+      ignore_errors: true
+      tags: ['setup-netperf']
+    
+    - name: Ensure iperf3-server service is absent
+      become: false
+      k8s: 
+        state: absent
+        kubeconfig: "../kubeconfig"
+        definition: 
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: iperf3-server
+            namespace: default
+            labels:
+              app: iperf3-server
+          spec:
+            selector:
+              app: iperf3-server
+            ports:
+            - protocol: TCP
+              port: 8080
+              targetPort: 8080
+            - protocol: UDP
+              port: 8080
+              targetPort: 8080
+            type: NodePort
+      delegate_to: localhost
+      ignore_errors: true
+      tags: ['setup-iperf']

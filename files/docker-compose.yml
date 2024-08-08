@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 'Pa$$w0rd'
+      MYSQL_USER: "grafana_user"
+      MYSQL_DATABASE: "cni_performance_testing"
+      MYSQL_PASSWORD: "grafana_user_password"
+    ports:
+      - "3306:3306"
+    #volumes:
+    #  - mysql_data:/var/lib/mysql
+    networks:
+      - grafana-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "4000:3000"
+    #volumes:
+    #  - grafana_data:/var/lib/grafana
+    depends_on:
+      - mysql
+    networks:
+      - grafana-network
+
+#volumes:
+#  mysql_data:
+#  grafana_data:
+
+
+networks:
+  grafana-network:
+    driver: bridge

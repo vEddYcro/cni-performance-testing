@@ -1,0 +1,21 @@
+---
+results_dir: "/testing_results"
+test_configuration: "fiber-to-fiber"
+test_devices: 
+  - "ens3"
+  - "ens2"
+
+mtu_values: 
+  - 1500: 
+  - 9000
+
+packet_sizes: 
+  - 64 
+  - 512 
+  - 1472 
+  - 9000
+  - 15000
+
+protocols: 
+  - "tcp"
+  - "udp"

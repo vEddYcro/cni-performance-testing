@@ -1,0 +1,10 @@
+---
+- name: Cleaning up environment before executing tuned network-throughput profile tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Cleaning up tuned network-throughput profile tests"
+
+    - name: Activate balanced profile
+      shell: "sudo tuned-adm profile balanced"

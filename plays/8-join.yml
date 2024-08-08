@@ -1,0 +1,42 @@
+---
+- name: Get command for joining the cluster
+  hosts: k8s-control-nodes
+  tasks: 
+    - name: Find all home directories created for users
+      find: 
+        paths: /home/
+        file_type: directory
+      register: home_dirs
+
+    - name: Create a .kube directory in home folder of each user
+      file: 
+        path: "{{ item.path }}/.kube"
+        state: directory
+        owner: "{{ item.pw_name }}"
+        group: "{{ item.pw_name }}"
+      with_items: "{{ home_dirs.files }}"
+
+    - name: Copy kubeconfig to $HOME/.kube of each user
+      copy: 
+        src: "/etc/kubernetes/admin.conf"
+        dest: "{{ item.path }}/.kube/config"
+        remote_src: true
+      with_items: "{{ home_dirs.files }}"
+
+    - name: Print join command
+      shell: "sudo kubeadm token create --print-join-command"
+      register: join_command
+
+- name: Join worker nodes to the cluster
+  hosts: k8s-worker-nodes
+  tasks: 
+    - name: Save join command
+      copy: 
+        content: "{{ hostvars['doktnet01']['join_command'].stdout }}"
+        dest: /home/matej/join_command.sh
+        mode: "774"
+
+    - name: Execute join command
+      shell: "sudo /home/matej/join_command.sh"
+
+    

@@ -1,0 +1,10 @@
+---
+- name: Setting up environment before executing tuned hpc-compute profile tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Setting up tuned hpc-compute profile tests"
+
+    - name: Activate hpc-compute profile
+      shell: "sudo tuned-adm profile hpc-compute"

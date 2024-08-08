@@ -1,0 +1,5 @@
+---
+- name: Ensure netperf server is running 
+  shell: "nohup netserver -D &"
+  delegate_to: "doktnet02"
+  tags: ['setup-netperf']

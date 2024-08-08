@@ -1,0 +1,51 @@
+---
+- name: Installing packages
+  hosts: all
+  tasks: 
+    - name: Turn off all swap
+      shell: "swapoff -a"
+
+    - name: Comment out all swap entries in fstab
+      shell: "sed -i '/ swap / s/^/#/' /etc/fstab"
+
+    - name: Update all packages on Ubuntu servers
+      apt: 
+        update_cache: yes
+        force_apt_get: yes
+        upgrade: dist
+
+    - name: Install necessary packages on Ubuntu servers
+      package: 
+        name: 
+          - apt-transport-https
+          - curl
+        state: latest
+
+    - name: Add Kubernetes related repository keys on Ubuntu servers
+      apt_key: 
+        url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+        state: present
+
+    - name: Add Kubernetes repo on Ubuntu servers
+      apt_repository: 
+        repo: deb https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /
+        state: present
+
+    - name: Update cache on Ubuntu servers
+      apt: 
+        update_cache: yes
+
+    - name: Ensure containerd.io is removed from Ubuntu servers
+      apt: 
+        name: containerd.io
+        state: absent
+
+    - name: Install Kubernetes related packages on Ubuntu servers
+      apt: 
+        name: 
+          - kubelet
+          - kubeadm
+          - kubectl
+          - docker.io
+          - nfs-common
+        state: latest

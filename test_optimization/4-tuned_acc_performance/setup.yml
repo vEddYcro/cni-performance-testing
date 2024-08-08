@@ -1,0 +1,10 @@
+---
+- name: Setting up environment before executing tuned accelerator-performance profile tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Setting up tuned accelerator-performance profile tests"
+
+    - name: Activate accelerator-performance profile
+      shell: "sudo tuned-adm profile accelerator-performance"

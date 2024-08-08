@@ -1,0 +1,25 @@
+---
+- name: Adjusting docker settings
+  hosts: all
+  tasks: 
+    - name: Enable and start docker service on Ubuntu servers
+      systemd: 
+        enabled: true
+        daemon_reload: true
+        name: docker.service
+        state: restarted
+
+    - name: Enable and start kubelet service 
+      systemd: 
+        enabled: true
+        daemon_reload: true
+        name: kubelet
+        state: restarted
+
+    - name: Allow users to execute docker commands
+      user: 
+        name: "{{ item }}"
+        groups: docker
+        append: true
+      with_items: 
+        - "matej"

@@ -1,0 +1,22 @@
+---
+- name: Fetch logs from testing nodes 
+  hosts: doktnet01
+  vars: 
+    results_dir: "/testing_results/8-tuned_network_throughput/fiber-to-fiber/"
+  tasks: 
+    - name: Find all files in logs directory
+      find:  
+        path: "{{ results_dir }}"
+        recurse: true
+      register: files_to_copy
+
+    - name: Print info about files
+      debug: 
+        msg: "Found {{ files_to_copy.files | length }} files!"
+
+    - name: Fetch log files
+      fetch: 
+        src: "{{ item.path }}"
+        dest: ../logs/
+      with_items: 
+        - "{{ files_to_copy.files }}"

@@ -1,0 +1,12 @@
+---
+- name: Assign node labels
+  hosts: k8s-control-nodes
+  become: false
+  tasks: 
+    - name: Assign master label to doktnet01
+      shell: "kubectl label node/doktnet01 node-role.kubernetes.io/master=master --overwrite"
+
+    - name: Assign worker label to node all nodes
+      shell: "kubectl label node/{{ item }} node-role.kubernetes.io/worker=worker"
+      with_items: 
+        - "doktnet02"

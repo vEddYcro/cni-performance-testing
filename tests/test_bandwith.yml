@@ -1,0 +1,132 @@
+- name: Test information
+  debug: 
+    msg: 
+      - "Testing bandwidth with the following configuration: "
+      - " - Test optimization: {{ test_optim }}"
+      - " - Test configuration: {{ test_config }}"
+      - " - Test endpoint: {{ test_endpoint }}"
+      - " - Test port: {{ test_port }}"
+      - " - Test packet size: {{ test_packet_size }}"
+      - " - Test mtu: {{ test_mtu }}"
+      - " - Test duration: {{ test_duration }}"
+      - " - Test protocol: {{ test_protocol }}"
+      - " - Test environment: {{ test_env }}"
+  when: ansible_hostname == "{{ test_hostname }}"
+
+- name: Testing bandwidth over TCP
+  shell: "iperf3 -c {{ test_endpoint }} -p {{ test_port }} -l {{ test_packet_size }} -t {{ test_duration }} >> {{ test_log_output }}"
+  when: ansible_hostname == "{{ test_hostname }}" and test_protocol == "tcp" and test_env == "operating-system"
+
+- name: Testing bandwidth over UDP
+  shell: "iperf3 -c {{ test_endpoint }} -p {{ test_port }} -u -l {{ test_packet_size }} -t {{ test_duration }} >> {{ test_log_output }}"
+  when: ansible_hostname == "{{ test_hostname }}" and test_protocol == "udp" and test_env == "operating-system"
+
+- name: Generate random string
+  set_fact: 
+    random_name: "{{ lookup('community.general.random_string', length=15,upper=false, numbers=false, special=false) }}"
+
+- name: Testing bandwidth over TCP
+  become: false
+  k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: bandwidth-tcp-{{ random_name }}
+        namespace: default
+        labels:
+          app: bandwidth-tcp-test
+          mtu: "{{ test_mtu }}"
+          packet: "{{ test_packet_size }}"
+          optimization: "{{ test_optim }}"
+          config: "{{ test_config }}"
+          protocol: "{{ test_protocol }}"
+      spec:
+        template:
+          metadata:
+            labels:
+              app: bandwidth-tcp-test
+              mtu: "{{ test_mtu }}"
+              packet: "{{ test_packet_size }}"
+              optimization: "{{ test_optim }}"
+              config: "{{ test_config }}"
+              protocol: "{{ test_protocol }}"
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: doktnet01
+            containers:
+            - name: iperf3
+              image: matejbasic/cni-performance-testing:1.0
+              command: ["iperf3", "-c", "{{ test_endpoint }}", "-p", "{{ test_port }}","-l","{{ test_packet_size }}", "-t", "{{ test_duration }}"]
+              volumeMounts:
+              - name: testing-results
+                mountPath: /testing_results
+            volumes:
+            - name: testing-results
+              hostPath:
+                path: /testing_results
+                type: DirectoryOrCreate
+            restartPolicy: Never
+        backoffLimit: 4
+  delegate_to: localhost
+  when: test_protocol == "tcp" and ansible_hostname == "{{ test_hostname }}" and test_env == "kubernetes"
+
+- name: Testing bandwidth over UDP
+  become: false
+  k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: bandwidth-udp-{{ random_name }}
+        namespace: default
+        labels:
+          app: bandwidth-udp-test
+          mtu: "{{ test_mtu }}"
+          packet: "{{ test_packet_size }}"
+          optimization: "{{ test_optim }}"
+          config: "{{ test_config }}"
+          protocol: "{{ test_protocol }}"
+      spec:
+        template:
+          metadata:
+            labels:
+              app: bandwidth-udp-test
+              mtu: "{{ test_mtu }}"
+              packet: "{{ test_packet_size }}"
+              optimization: "{{ test_optim }}"
+              config: "{{ test_config }}"
+              protocol: "{{ test_protocol }}"
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: doktnet01
+            containers:
+            - name: iperf3
+              image: matejbasic/cni-performance-testing:1.0
+              command: ["iperf3", "-c", "{{ test_endpoint }}", "-p", "{{ test_port }}","-u","-l","{{ test_packet_size }}", "-t", "{{ test_duration }}"]
+              ports:
+              - containerPort: 5201
+                name: iperf3
+              volumeMounts:
+              - name: testing-results
+                mountPath: /testing_results
+            volumes:
+            - name: testing-results
+              hostPath:
+                path: /testing_results
+                type: DirectoryOrCreate
+            restartPolicy: Never
+        backoffLimit: 4
+  delegate_to: localhost
+  when: test_protocol == "udp" and ansible_hostname == "{{ test_hostname }}" and test_env == "kubernetes"
+
+- name: Waiting for the testing Job to finish
+  pause: 
+    seconds: 40
+    prompt: "Waiting 40 seconds for the testing job to finish"
+    echo: false
+  when: test_env == "kubernetes" and ansible_hostname == "{{ test_hostname }}" 

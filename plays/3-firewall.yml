@@ -1,0 +1,56 @@
+---
+- name: Adjusting firewall settings
+  hosts: all
+  tasks: 
+    - name: Adjust firewall settings on Ubuntu servers 
+      block: 
+        - name: Allow port 6784 in firewall
+          ufw:
+            rule: allow
+            port: 6780:6790
+            proto: tcp
+
+        - name: Allow port 443 in firewall
+          ufw:
+            rule: allow
+            port: 443
+            proto: tcp
+
+        - name: Allow port 80 in firewall
+          ufw:
+            rule: allow
+            port: 80
+            proto: tcp
+
+        - name: Allow port 30080 in firewall
+          ufw:
+            rule: allow
+            port: 30080
+
+        - name: Allow port 30443 in firewall
+          ufw:
+            rule: allow
+            port: 30443
+
+        - name: Allow port 6443 in firewall
+          ufw:
+            rule: allow
+            port: 6443
+            proto: tcp
+
+        - name: Allow port 8443 in firewall
+          ufw:
+            rule: allow
+            port: 8443
+            proto: tcp
+
+        - name: Allow port 22 in firewall
+          ufw:
+            rule: allow
+            port: 22
+            proto: tcp
+            state: disabled
+
+        - name: Disable firewall
+          shell: "ufw disable"
+      when: ansible_facts['distribution'] == "Ubuntu"

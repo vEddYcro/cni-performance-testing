@@ -1,0 +1,10 @@
+---
+- name: Initialize kubernetes cluster
+  hosts: k8s-control-nodes
+  tasks: 
+
+    - name: Init phase kubelet-start
+      shell: "kubeadm init phase kubelet-start"
+  
+    - name: Kubeadm init
+      shell: "kubeadm init --pod-network-cidr=10.244.0.0/16"

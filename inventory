@@ -1,0 +1,5 @@
+[k8s-worker-nodes]
+doktnet02	ansible_ssh_host=10.10.68.103 local_host_id=2 remote_host_id=1
+
+[k8s-control-nodes]
+doktnet01	ansible_ssh_host=10.10.68.113 local_host_id=1 remote_host_id=2

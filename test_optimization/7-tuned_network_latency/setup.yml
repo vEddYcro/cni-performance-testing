@@ -1,0 +1,10 @@
+---
+- name: Setting up environment before executing tuned network-latency profile tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Setting up tuned network-latency profile tests"
+
+    - name: Activate network-latency profile
+      shell: "sudo tuned-adm profile network-latency"

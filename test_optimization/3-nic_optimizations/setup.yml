@@ -1,0 +1,39 @@
+---
+- name: Setting up environment before executing NIC optimizations tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Setting up NIC optimization tests"
+
+    - name: Get list of all the NICs
+      shell: "sudo ls /sys/class/net | grep -v 'lo'"
+      register: nics
+
+    - name: Print NICs
+      debug: 
+        msg: "Found these NICs: {{ nics.stdout_lines }}"
+
+    - name: Enable Generic Receive Offload (GRO)
+      shell: "sudo ethtool --offload {{ item }} gro on"
+      ignore_errors: true
+      with_items: 
+        - "{{ nics.stdout_lines }}"
+
+    - name: Enable Large Receive Offload (LRO)
+      shell: "sudo ethtool --offload {{ item }} lro on"
+      ignore_errors: true
+      with_items: 
+        - "{{ nics.stdout_lines }}"
+
+    - name: Disable TCP Segmentation Offload (TSO)
+      shell: "sudo ethtool --offload {{ item }} tso off"
+      ignore_errors: true
+      with_items: 
+        - "{{ nics.stdout_lines }}"
+
+    - name: Set ring buffer sizes (RX and TX)
+      shell: "sudo ethtool --set-ring {{ item }} rx 4096 tx 4096"
+      ignore_errors: true
+      with_items: 
+        - "{{ nics.stdout_lines }}"

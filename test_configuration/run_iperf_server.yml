@@ -1,0 +1,81 @@
+---
+- name: Ensure iperf3 server is running 
+  shell: "nohup iperf3 -s -p 8080 &"
+  when: test_environment == "operating-system"
+  tags: ['setup-iperf']
+
+- name: Ensure iperf3 server is running 
+  become: false
+  k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: iperf3-server
+        namespace: default
+        labels:
+          app: iperf3-server
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: iperf3-server
+        template:
+          metadata:
+            labels:
+              app: iperf3-server
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: doktnet02
+            containers:
+            - name: iperf3-server
+              image: matejbasic/cni-performance-testing:1.0
+              command: ["iperf3","-s","-p","30080"]
+              ports:
+              - containerPort: 30080
+  when: test_environment == "kubernetes"
+  delegate_to: localhost
+  ignore_errors: true
+  tags: ['setup-iperf']
+
+- name: Ensure iperf3-server service exists
+  become: false
+  k8s: 
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition: 
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: iperf3-server
+        namespace: default
+        labels:
+          app: iperf3-server
+      spec:
+        selector:
+          app: iperf3-server
+        ports:
+        - protocol: TCP
+          name: iperf-tcp
+          port: 30080
+          targetPort: 30080
+          nodePort: 30080
+        - protocol: UDP
+          name: iperf-udp
+          port: 30080
+          targetPort: 30080
+          nodePort: 30080
+        type: NodePort
+  when: test_environment == "kubernetes"
+  delegate_to: localhost
+  ignore_errors: true
+  tags: ['setup-iperf']
+
+- name: Waiting for the testing Job to finish
+  pause: 
+    seconds: 30
+    prompt: "Waiting 30 seconds for the iperf server to run"
+    echo: false
+  when: test_environment == "kubernetes"

@@ -1,0 +1,7 @@
+---
+- name: Setting up environment before executing default settings tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Setting up Default settings tests doesn't have any additional prerequisites"

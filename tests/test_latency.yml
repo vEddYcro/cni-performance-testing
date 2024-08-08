@@ -1,0 +1,126 @@
+- name: Test information
+  debug: 
+    msg: 
+      - "Testing latency with the following configuration:" 
+      - " - Test optimization: {{ test_optim }}"
+      - " - Test configuration: {{ test_config }}"
+      - " - Test endpoint: {{ test_endpoint }}"
+      - " - Test mtu: {{ test_mtu }}"
+      - " - Test duration: {{ test_duration }}"
+      - " - Test protocol: {{ test_protocol }}"
+      - " - Test environment: {{ test_env }}"
+  when: ansible_hostname == "{{ test_hostname }}"
+
+- name: Testing latency over TCP
+  shell: "netperf -H {{ test_endpoint }} -l {{ test_duration }} -t TCP_RR -v 2 -- -o min_latency,mean_latency,max_latency,stddev_latency,transaction_rate >> {{ test_log_output }}"
+  when: ansible_hostname == "{{ test_hostname }}" and test_protocol == "tcp" and test_env == "operating-system"
+
+- name: Testing latency over UDP
+  shell: "netperf -H {{ test_endpoint }} -l {{ test_duration }} -t UDP_RR -v 2 -- -o min_latency,mean_latency,max_latency,stddev_latency,transaction_rate >> {{ test_log_output }}"
+  when: ansible_hostname == "{{ test_hostname }}" and test_protocol == "udp" and test_env == "operating-system"
+
+- name: Generate random string
+  set_fact: 
+    random_name: "{{ lookup('community.general.random_string', length=15,upper=false, numbers=false, special=false) }}"
+
+- name: Testing latency over TCP
+  become: false
+  k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: latency-tcp-{{ random_name }}
+        namespace: default
+        labels:
+          app: latency-tcp-test
+          mtu: "{{ test_mtu }}"
+          optimization: "{{ test_optim }}"
+          config: "{{ test_config }}"
+          protocol: "{{ test_protocol }}"
+      spec:
+        template:
+          metadata:
+            labels:
+              app: latency-tcp-test
+              mtu: "{{ test_mtu }}"
+              optimization: "{{ test_optim }}"
+              config: "{{ test_config }}"
+              protocol: "{{ test_protocol }}"
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: doktnet01
+            containers:
+            - name: netperf
+              image: matejbasic/cni-performance-testing:1.0
+              command: ["netperf", "-H", "{{ test_endpoint }}","-l", "{{ test_duration }}", "-t", "TCP_RR", "-v", "2", "--", "-o","min_latency,mean_latency,max_latency,stddev_latency,transaction_rate"]
+              volumeMounts:
+              - name: testing-results
+                mountPath: /testing_results
+            volumes:
+            - name: testing-results
+              hostPath:
+                path: /testing_results
+                type: DirectoryOrCreate
+            restartPolicy: Never
+        backoffLimit: 4
+  delegate_to: localhost
+  when: test_protocol == "tcp" and ansible_hostname == "{{ test_hostname }}" and test_env == "kubernetes"
+
+- name: Testing latency over UDP
+  become: false
+  k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: latency-udp-{{ random_name }}
+        namespace: default
+        labels:
+          app: latency-udp-test
+          mtu: "{{ test_mtu }}"
+          optimization: "{{ test_optim }}"
+          config: "{{ test_config }}"
+          protocol: "{{ test_protocol }}"
+      spec:
+        template:
+          metadata:
+            labels:
+              app: latency-udp-test
+              mtu: "{{ test_mtu }}"
+              optimization: "{{ test_optim }}"
+              config: "{{ test_config }}"
+              protocol: "{{ test_protocol }}"
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: doktnet01
+            containers:
+            - name: netperf
+              image: matejbasic/cni-performance-testing:1.0
+              command: ["netperf", "-H", "{{ test_endpoint }}", "-l", "{{ test_duration }}", "-t", "UDP_RR", "-v", "2", "--", "-o","min_latency,mean_latency,max_latency,stddev_latency,transaction_rate"]
+              ports:
+              - containerPort: 5201
+                name: netperf
+              volumeMounts:
+              - name: testing-results
+                mountPath: /testing_results
+            volumes:
+            - name: testing-results
+              hostPath:
+                path: /testing_results
+                type: DirectoryOrCreate
+            restartPolicy: Never
+        backoffLimit: 4
+  delegate_to: localhost
+  when: test_protocol == "udp" and ansible_hostname == "{{ test_hostname }}" and test_env == "kubernetes"
+
+- name: Waiting for the testing Job to finish
+  pause: 
+    seconds: 40
+    prompt: "Waiting 40 seconds for the testing job to finish"
+    echo: false
+  when: test_env == "kubernetes" and ansible_hostname == "{{ test_hostname }}"

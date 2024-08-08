@@ -1,0 +1,10 @@
+---
+- name: Setting up environment before executing tuned network-throughput profile tests
+  hosts: all
+  tasks: 
+    - name: Print all changes made in this setup scripts
+      debug: 
+        msg: "Setting up tuned network-throughput profile tests"
+
+    - name: Activate network-throughput profile
+      shell: "sudo tuned-adm profile network-throughput"
