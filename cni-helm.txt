@@ -1,0 +1,33 @@
+#ANTREA
+helm repo add antrea https://charts.antrea.io/
+helm install antrea antrea/antrea --namespace kube-system
+sudo wget https://github.com/antrea-io/antrea/releases/download/v2.0.0/antctl-linux-x86_64 -O /usr/bin/antctl && sudo chmod +x antctl
+helm uninstall antrea --namespace kube-system
+
+
+#CILIUM
+helm repo add cilium https://helm.cilium.io/
+helm install cilium cilium/cilium --version 1.15.6 --namespace kube-system
+helm install cilium cilium/cilium --version 1.15.6 --namespace kube-system --set tunnelProtocol=geneve
+sudo tar xvf cilium-linux-amd64.tar.gz -C /usr/bin
+cilium -n kube-system uninstall
+# For every node, otherwise CoreDNS crashes, not necessary if we're switching between VXLAN and Geneve
+# deployment
+rm /etc/cni/net.d/*
+
+
+#FLANNEL
+kubectl create ns kube-flannel
+kubectl label --overwrite ns kube-flannel pod-security.kubernetes.io/enforce=privileged
+helm repo add flannel https://flannel-io.github.io/flannel/
+helm install flannel --set podCidr="10.233.64.0/18" --namespace kube-flannel flannel/flannel
+helm uninstall flannel --namespace kube-flannel
+# For every node, otherwise CoreDNS crashes
+rm /etc/cni/net.d/*
+
+
+#CALICO
+helm repo add projectcalico https://docs.tigera.io/calico/charts
+kubectl create namespace tigera-operator
+helm install calico projectcalico/tigera-operator --version v3.28.0 --namespace tigera-operator
+sudo curl -L https://github.com/projectcalico/calico/releases/download/v3.28.0/calicoctl-linux-amd64 -o /usr/bin/calicoctl && sudo chmod +x /usr/bin/calicoctl
